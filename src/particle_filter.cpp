@@ -57,7 +57,7 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 	default_random_engine generator;
 	for (int i=0; i<num_particles; i++)
 	{
-		double x_, y_, theta_;
+		double x_, y_, theta_; //the predicted values
 		if (yaw_rate=0)
 		{
 			x_ = particles[i].x + velocity * delta_t * cos(particles[i].theta);
@@ -87,31 +87,60 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 	//   observed measurement to this particular landmark.
 	// NOTE: this method will NOT be called by the grading code. But you will probably find it useful to 
 	//   implement this method and use it as a helper during the updateWeights phase.
-	vector<double> sense_x;
-	vector<double> sense_y;
-	Particle p;
-	
-	vector<LandmarkObs> trans_observations; //the transformed observations
-	LandmarkObs obs, trans_obs;
-	
-	for (int i = 0; i<num_particles; i++)
-	{
-		p = particles[i];
-		for (int j = 0; j < observations.size(); j++)
-		{	
-			obs = observations[j];
-			trans_obs.x = p.x+ obs.x*cos(p.theta) - obs.y*sin(p.theta);
-			trans_obs.y = p.y+ obs.x*sin(p.theta) + obs.y*cos(p.theta);	
-			trans_observations.push_back(trans_obs);
-		}
+	double bestX, bestY;
 
+	for (int i = 0; i < observations.size(); i++) //each observation from the particles vintage point.
+	{
+		LandmarkObs observed = observations[i];
+		for (int j = 0; i < predicted.size(); j++)
+		{
+			landmark = landmarks[j];
+			double d = dist(landmark.x, landmark.y, observed.x, observed.y);
+			if  (d < minDist)	
+			{
+				nearestLandmarkId = predicted.id;
+				minDist = d;
+			}
+			observations[i].id = nearestLandmarkId;
+		}
+	}
+}
+
+std::vector<LandmarkObs> ParticleFilter::TransformObeservations(Particle p, std::vector<LandmarkObs> observations)
+{		
+	std::vector<LandmarkObs> trans_observations; //the transformed observations
+	LandmarkObs obs, trans_obs;	
+		
+	for (int j = 0; j < observations.size(); j++)
+	{	
+		obs = observations[j];
+		trans_obs.x = p.x + obs.x*cos(p.theta) - obs.y*sin(p.theta);
+		trans_obs.y = p.y + obs.x*sin(p.theta) + obs.y*cos(p.theta);			
+		trans_observations.push_back(trans_obs);		
+	}			
+	return trans_observations;
+}
+
+std::vector<LandmarkObs> predictObeservations(Map m)
+{
+	// Range calculation not implemented due to small size of map
+	LandmarkObs landmark;
+	std::vector<LandmarkObs> relevantLandmarks;
+
+	for (int i = 0; i < m.size(); i++){
+		
+		landmark.id = m[i].id;
+		landmark.x = m[i].x_f;
+		landmark.y = m[i].y_f;		
+		relevantLandmarks.push_back(landmark);
 	}
 }
 
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[], 
-		std::vector<LandmarkObs> observations, Map map_landmarks) {
+		std::vector<LandmarkObs> observations, Map map_landmarks) 
+{
 	// TODO: Update the weights of each particle using a mult-variate Gaussian distribution. You can read
-	//   more about this distribution here: https://en.wikipedia.org/wiki/Multivariate_normal_distribution
+	//   more about this distribution here: https://en.wikipedia.org/wiki/Multivariate_nor-mal_distribution
 	// NOTE: The observations are given in the VEHICLE'S coordinate system. Your particles are located
 	//   according to the MAP'S coordinate system. You will need to transform between the two systems.
 	//   Keep in mind that this transformation requires both rotation AND translation (but no scaling).
@@ -120,14 +149,42 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   and the following is a good resource for the actual equation to implement (look at equation 
 	//   3.33
 	//   http://planning.cs.uiuc.edu/node99.html
-	for (int i=0; i < num_particles; i++)
+	vector<LandmarkObs> tr_observations;
+	
+	for (i = 0; i <num_particles; i++)
 	{
-		Particle p;
+		Particle p = particles[i];
+		//transform actual observations to map space
+		tr_observations = TransformObservations(p, observations);
+		//predict observations by extracting relevant map data
+		predictedObservations = predictObservations(map_landmarks);		
+		dataAssociation(predictedObservations, tr_observations);
+
+		for (j=0; j < tr_observations.size(); j++)
+		{
+			p.associations.push_back(tr_observations.id);
+			p.sense_x.push_back(tr_observations.x);
+			p.sense_y.push_back(tr_observations.y);
+
+			double measurementX = (tr_observations.x);
+			double measurementy = (tr_observations.y);
+
+			muX = map_landmarks.landmark_list[tr_observations.id].x_f;
+			muY = map_landmarks.landmark_list[tr_observations.id].y_f;
+
+			long double multiplier // weight calc to be done
+			p.weight*=multiplier;		
+
+			
+		}
+
 		
 
-	}
-	
+	}	
 }
+
+
+
 
 void ParticleFilter::resample() {
 	// TODO: Resample particles with replacement with probability proportional to their weight. 

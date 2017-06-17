@@ -37,4 +37,5 @@
         "typeinfo": "cpp",
         "utility": "cpp"
     }
+    "editor.minimap.enabled": "false"
 }
