@@ -116,9 +116,13 @@ public:
 	}
 
 	/**Transform measurements to to particles coordinate system
-	*/
+	*/	
+	std::vector<LandmarkObs> transformObservations(Particle p, std::vector<LandmarkObs> observations);
 
-	std::vector<LandmarkObs> TransformObservations(Particle p, std::vector<LandmarkObs> observations);
+	/*
+	*Extract relevant predictions from the map
+	*/
+	std::vector<LandmarkObs> predictObservations(Map m);
 
 
 	

@@ -88,25 +88,26 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 	// NOTE: this method will NOT be called by the grading code. But you will probably find it useful to 
 	//   implement this method and use it as a helper during the updateWeights phase.
 	double bestX, bestY;
+	double minDist = 1000;	
+	int association;
 
 	for (int i = 0; i < observations.size(); i++) //each observation from the particles vintage point.
 	{
 		LandmarkObs observed = observations[i];
-		for (int j = 0; i < predicted.size(); j++)
-		{
-			landmark = landmarks[j];
-			double d = dist(landmark.x, landmark.y, observed.x, observed.y);
+		for (int j = 0; j < predicted.size(); j++)
+		{			
+			double d = dist(predicted[j].x, predicted[j].y, observed.x, observed.y);
 			if  (d < minDist)	
 			{
-				nearestLandmarkId = predicted.id;
+				association = predicted[j].id;
 				minDist = d;
 			}
-			observations[i].id = nearestLandmarkId;
+			observations[i].id = association;
 		}
 	}
 }
 
-std::vector<LandmarkObs> ParticleFilter::TransformObeservations(Particle p, std::vector<LandmarkObs> observations)
+std::vector<LandmarkObs> ParticleFilter::transformObservations(Particle p, std::vector<LandmarkObs> observations)
 {		
 	std::vector<LandmarkObs> trans_observations; //the transformed observations
 	LandmarkObs obs, trans_obs;	
@@ -121,20 +122,22 @@ std::vector<LandmarkObs> ParticleFilter::TransformObeservations(Particle p, std:
 	return trans_observations;
 }
 
-std::vector<LandmarkObs> predictObeservations(Map m)
+std::vector<LandmarkObs> ParticleFilter::predictObservations(Map m)
 {
 	// Range calculation not implemented due to small size of map
 	LandmarkObs landmark;
 	std::vector<LandmarkObs> relevantLandmarks;
 
-	for (int i = 0; i < m.size(); i++){
+	for (int i = 0; i < m.landmark_list.size(); i++){
 		
-		landmark.id = m[i].id;
-		landmark.x = m[i].x_f;
-		landmark.y = m[i].y_f;		
+		landmark.id = m.landmark_list[i].id_i;
+		landmark.x = m.landmark_list[i].x_f;
+		landmark.y = m.landmark_list[i].y_f;		
 		relevantLandmarks.push_back(landmark);
 	}
+	return relevantLandmarks;
 }
+
 
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[], 
 		std::vector<LandmarkObs> observations, Map map_landmarks) 
@@ -150,29 +153,35 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   3.33
 	//   http://planning.cs.uiuc.edu/node99.html
 	vector<LandmarkObs> tr_observations;
+	vector<LandmarkObs> predictedObservations;
 	
-	for (i = 0; i <num_particles; i++)
+	for (int i = 0; i <num_particles; i++)
 	{
 		Particle p = particles[i];
 		//transform actual observations to map space
-		tr_observations = TransformObservations(p, observations);
+		tr_observations = transformObservations(p, observations);
 		//predict observations by extracting relevant map data
 		predictedObservations = predictObservations(map_landmarks);		
 		dataAssociation(predictedObservations, tr_observations);
 
-		for (j=0; j < tr_observations.size(); j++)
+		for (int j=0; j < tr_observations.size(); j++)
 		{
-			p.associations.push_back(tr_observations.id);
-			p.sense_x.push_back(tr_observations.x);
-			p.sense_y.push_back(tr_observations.y);
+			p.associations.push_back(tr_observations[j].id);
+			p.sense_x.push_back(tr_observations[j].x);
+			p.sense_y.push_back(tr_observations[j].y);
 
-			double measurementX = (tr_observations.x);
-			double measurementy = (tr_observations.y);
+			double measX = (tr_observations[j].x);
+			double measY= (tr_observations[j].y);
 
-			muX = map_landmarks.landmark_list[tr_observations.id].x_f;
-			muY = map_landmarks.landmark_list[tr_observations.id].y_f;
+			double muX = map_landmarks.landmark_list[tr_observations[j].id].x_f;
+			double muY = map_landmarks.landmark_list[tr_observations[j].id].y_f;			
 
-			long double multiplier // weight calc to be done
+			long double multiplier = 1 / (2*M_PI*std_landmark[0]*M_PI*std_landmark[1])*
+			exp(-						
+			(
+				pow(measX - muX , 2.0)/(2*pow(std_landmark[0], 2.0)) + 
+				pow(measY - muY , 2.0)/(2*pow(std_landmark[1], 2.0))
+			) );
 			p.weight*=multiplier;		
 
 			
