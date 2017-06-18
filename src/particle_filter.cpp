@@ -24,7 +24,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	//   x, y, theta and their uncertainties from GPS) and all weights to 1. 
 	// Add random Gaussian noise to each particle.
 	// NOTE: Consult particle_filter.h for more information about this method (and others in this file).
-	num_particles = 100;
+	num_particles = 1;
 	std::default_random_engine gen;
 	std::normal_distribution<double> N_x(x, std[0]);
 	std::normal_distribution<double> N_y(y, std[1]);
@@ -44,7 +44,18 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	}
 	is_initialized = true;
 
-	cout<< "Initialized" << endl;
+	cout << "Initialized" << endl;
+	cout << "0 particle: " << particles[0].id << endl;
+
+	for (auto& p : particles)
+	{
+		cout << "Particles prediction";
+		cout <<"x: \t" << p.x;
+		cout <<"y: " << p.y;
+		cout <<"theta: " << p.theta;
+		cout <<"n ass: " << p.associations.size() << endl;
+
+	}
 
 	
 }
@@ -79,7 +90,16 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 		particles[i].y = N_y(generator);
 		particles[i].theta = N_theta(generator);
 	}
+	for (auto& p : particles)
+	{
+		cout << "Particles prediction";
+		cout <<"x" << p.x;
+		cout <<"y" << p.y;
+		cout <<"theta" << p.theta;
+		cout <<"n ass" << p.associations.size() << endl;
 
+	}
+	
 }
 
 void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::vector<LandmarkObs>& observations) {
@@ -88,7 +108,7 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 	// NOTE: this method will NOT be called by the grading code. But you will probably find it useful to 
 	//   implement this method and use it as a helper during the updateWeights phase.
 	double bestX, bestY;
-	double minDist = 1000;	
+	double minDist = 10000;	
 	int association;
 
 	for (int i = 0; i < observations.size(); i++) //each observation from the particles vintage point.
@@ -173,8 +193,9 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 			double measX = (tr_observations[j].x);
 			double measY= (tr_observations[j].y);
 
-			double muX = map_landmarks.landmark_list[tr_observations[j].id].x_f;
-			double muY = map_landmarks.landmark_list[tr_observations[j].id].y_f;			
+			// numbering of rows in map starts with 1, hence association -1
+			double muX = map_landmarks.landmark_list[tr_observations[j].id-1].x_f;
+			double muY = map_landmarks.landmark_list[tr_observations[j].id-1].y_f;			
 
 			long double multiplier = 1 / (2*M_PI*std_landmark[0]*M_PI*std_landmark[1])*
 			exp(-						
@@ -182,14 +203,30 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 				pow(measX - muX , 2.0)/(2*pow(std_landmark[0], 2.0)) + 
 				pow(measY - muY , 2.0)/(2*pow(std_landmark[1], 2.0))
 			) );
-			p.weight*=multiplier;		
+			p.weight *= multiplier;							
 
-			
-		}
-
-		
+		}		
 
 	}	
+	//diagnostic
+	cout << "after update weights" << endl;
+	for (auto& obs : tr_observations)
+	{
+		cout << "Transformed observations ";
+		cout << " x: \t" << obs.x; 
+		cout << " y: \t" << obs.y;
+		cout << " id: \t " << obs.id << endl;
+		cout << "-------------------------------------------" << endl;
+		cout << map_landmarks.landmark_list[obs.id-1].id_i << "\t";
+		cout << map_landmarks.landmark_list[obs.id-1].x_f << endl;
+		
+
+
+	}
+	cout <<"n ass: " << tr_observations.size() << endl;
+
+	
+
 }
 
 

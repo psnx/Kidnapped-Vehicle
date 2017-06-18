@@ -4,13 +4,12 @@
 
         {
             "name": "(gdb) Launch",
-            "type": "lldb-mi",
+            "type": "cppdbg",
             "request": "launch",
-            "target": "./bin/",
-            "program": "${workspaceRoot}/build/out.mine",
+            "program": "${workspaceRoot}/main.cpp",
             "args": [],
             "stopAtEntry": false,
-            "cwd": "${workspaceRoot}/build",
+            "cwd": "${workspaceRoot}",
             "environment": [],
             "externalConsole": true,
             "MIMode": "gdb",
@@ -18,7 +17,7 @@
                 {
                     "description": "Enable pretty-printing for gdb",
                     "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
+                    "ignoreFailures": false
                 }
             ]
         }
