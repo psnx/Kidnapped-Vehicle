@@ -49,15 +49,13 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 
 	for (auto& p : particles)
 	{
-		cout << "Particles prediction";
+		cout << "Particles prediction init \t";
 		cout <<"x: \t" << p.x;
 		cout <<"y: " << p.y;
 		cout <<"theta: " << p.theta;
 		cout <<"n ass: " << p.associations.size() << endl;
 
-	}
-
-	
+	}	
 }
 
 void ParticleFilter::prediction(double delta_t, double std_pos[], double velocity, double yaw_rate) {
@@ -65,11 +63,13 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 	// NOTE: When adding noise you may find std::normal_distribution and std::default_random_engine useful.
 	//  http://en.cppreference.com/w/cpp/numeric/random/normal_distribution
 	//  http://www.cplusplus.com/reference/random/default_random_engine/
-	default_random_engine generator;
+	default_random_engine gen;
+	double x_ , y_, theta_; // the new predicted values	
+
 	for (int i=0; i<num_particles; i++)
 	{
 		double x_, y_, theta_; //the predicted values
-		if (yaw_rate=0)
+		if (yaw_rate == 0)
 		{
 			x_ = particles[i].x + velocity * delta_t * cos(particles[i].theta);
 			y_ = particles[i].y + velocity * delta_t * sin(particles[i].theta);
@@ -77,8 +77,8 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 
 		} else {
 			 // if not 0 yaw rate
-			 x_ = particles[i].x + (velocity/yaw_rate) * (sin(particles[i].theta+yaw_rate*delta_t)-sin(theta_));
-			 y_ = particles[i].y + (velocity/yaw_rate) * (cos(particles[i].theta)-cos(theta_ + yaw_rate*delta_t));
+			 x_ = particles[i].x + (velocity/yaw_rate) * (sin(particles[i].theta + yaw_rate*delta_t)-sin(particles[i].theta));
+			 y_ = particles[i].y + (velocity/yaw_rate) * (cos(particles[i].theta) - cos(particles[i].theta + yaw_rate * delta_t));
 			 theta_ = particles[i].theta + yaw_rate * delta_t;
 		}
 
@@ -86,17 +86,19 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 		std::normal_distribution<double> N_y(y_, std_pos[1]);
 		std::normal_distribution<double> N_theta(theta_, std_pos[2]);
 		
-		particles[i].x = N_x(generator);
-		particles[i].y = N_y(generator);
-		particles[i].theta = N_theta(generator);
+		//state transition
+		particles[i].x = N_x(gen);
+		particles[i].y = N_y(gen);
+		particles[i].theta = N_theta(gen);
 	}
+
 	for (auto& p : particles)
 	{
-		cout << "Particles prediction";
-		cout <<"x" << p.x;
-		cout <<"y" << p.y;
-		cout <<"theta" << p.theta;
-		cout <<"n ass" << p.associations.size() << endl;
+		cout << "Particles prediction pred: \n";		
+		cout <<"x: " << x_;
+		cout <<"\t y: " << p.y;
+		cout <<"\t theta: " << p.theta;
+		cout <<"\t n ass: " << p.associations.size() << endl;
 
 	}
 	
@@ -186,6 +188,10 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 
 		for (int j=0; j < tr_observations.size(); j++)
 		{
+			p.associations.clear();
+			p.sense_x.clear();
+			p.sense_y.clear();
+			
 			p.associations.push_back(tr_observations[j].id);
 			p.sense_x.push_back(tr_observations[j].x);
 			p.sense_y.push_back(tr_observations[j].y);
@@ -203,7 +209,8 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 				pow(measX - muX , 2.0)/(2*pow(std_landmark[0], 2.0)) + 
 				pow(measY - muY , 2.0)/(2*pow(std_landmark[1], 2.0))
 			) );
-			p.weight *= multiplier;							
+			p.weight *= multiplier;
+			p.weight = 0.5;							
 
 		}		
 
@@ -212,13 +219,16 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	cout << "after update weights" << endl;
 	for (auto& obs : tr_observations)
 	{
-		cout << "Transformed observations ";
-		cout << " x: \t" << obs.x; 
-		cout << " y: \t" << obs.y;
-		cout << " id: \t " << obs.id << endl;
+		cout << "Transformed observations...";
+		cout << " \t id: " << obs.id << "\t";	
+		cout << " \t x: " << obs.x; 
+		cout << " \t y: " << obs.y << endl;
+		
+		cout << "Coordinated from map......";
+		cout << "\t id: " << map_landmarks.landmark_list[obs.id-1].id_i << "\t";
+		cout << "\t x: " << map_landmarks.landmark_list[obs.id-1].x_f;
+		cout << "\t y: " << map_landmarks.landmark_list[obs.id-1].y_f << endl;
 		cout << "-------------------------------------------" << endl;
-		cout << map_landmarks.landmark_list[obs.id-1].id_i << "\t";
-		cout << map_landmarks.landmark_list[obs.id-1].x_f << endl;
 		
 
 
