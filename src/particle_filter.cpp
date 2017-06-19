@@ -24,7 +24,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	//   x, y, theta and their uncertainties from GPS) and all weights to 1. 
 	// Add random Gaussian noise to each particle.
 	// NOTE: Consult particle_filter.h for more information about this method (and others in this file).
-	num_particles = 1;
+	num_particles = 100;
 	std::default_random_engine gen;
 	std::normal_distribution<double> N_x(x, std[0]);
 	std::normal_distribution<double> N_y(y, std[1]);
@@ -90,12 +90,14 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 		particles[i].x = N_x(gen);
 		particles[i].y = N_y(gen);
 		particles[i].theta = N_theta(gen);
+
+		particles[i].associations.clear();		
 	}
 
 	for (auto& p : particles)
 	{
 		cout << "Particles prediction pred: \n";		
-		cout <<"x: " << x_;
+		cout <<"x: " << p.x;
 		cout <<"\t y: " << p.y;
 		cout <<"\t theta: " << p.theta;
 		cout <<"\t n ass: " << p.associations.size() << endl;
@@ -115,16 +117,16 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 
 	for (int i = 0; i < observations.size(); i++) //each observation from the particles vintage point.
 	{
-		LandmarkObs observed = observations[i];
+		//LandmarkObs observed = observations[i];
 		for (int j = 0; j < predicted.size(); j++)
 		{			
-			double d = dist(predicted[j].x, predicted[j].y, observed.x, observed.y);
+			double d = dist(predicted[j].x, predicted[j].y, observations[i].x, observations[i].y);
 			if  (d < minDist)	
 			{
 				association = predicted[j].id;
 				minDist = d;
 			}
-			observations[i].id = association;
+		observations[i].id = association;
 		}
 	}
 }
@@ -137,8 +139,8 @@ std::vector<LandmarkObs> ParticleFilter::transformObservations(Particle p, std::
 	for (int j = 0; j < observations.size(); j++)
 	{	
 		obs = observations[j];
-		trans_obs.x = p.x + obs.x*cos(p.theta) - obs.y*sin(p.theta);
-		trans_obs.y = p.y + obs.x*sin(p.theta) + obs.y*cos(p.theta);			
+		trans_obs.x = p.x + (obs.x*cos(p.theta) - obs.y*sin(p.theta));
+		trans_obs.y = p.y + (obs.x*sin(p.theta) + obs.y*cos(p.theta));			
 		trans_observations.push_back(trans_obs);		
 	}			
 	return trans_observations;
@@ -177,40 +179,45 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	vector<LandmarkObs> tr_observations;
 	vector<LandmarkObs> predictedObservations;
 	
-	for (int i = 0; i <num_particles; i++)
+	for (auto& p: particles)
 	{
-		Particle p = particles[i];
+		
 		//transform actual observations to map space
 		tr_observations = transformObservations(p, observations);
 		//predict observations by extracting relevant map data
 		predictedObservations = predictObservations(map_landmarks);		
 		dataAssociation(predictedObservations, tr_observations);
+		p.weight = 1;
+		p.associations.clear();
+		p.sense_x.clear();
+		p.sense_y.clear();
+			
 
 		for (int j=0; j < tr_observations.size(); j++)
-		{
-			p.associations.clear();
-			p.sense_x.clear();
-			p.sense_y.clear();
+		{			
 			
 			p.associations.push_back(tr_observations[j].id);
 			p.sense_x.push_back(tr_observations[j].x);
 			p.sense_y.push_back(tr_observations[j].y);
 
-			double measX = (tr_observations[j].x);
-			double measY= (tr_observations[j].y);
+			double muX, muY, measX, measY;
 
-			// numbering of rows in map starts with 1, hence association -1
-			double muX = map_landmarks.landmark_list[tr_observations[j].id-1].x_f;
-			double muY = map_landmarks.landmark_list[tr_observations[j].id-1].y_f;			
+			if (tr_observations[j].id != 0)
+			{
+				double measX = (tr_observations[j].x);
+				double measY= (tr_observations[j].y);
 
-			long double multiplier = 1 / (2*M_PI*std_landmark[0]*M_PI*std_landmark[1])*
-			exp(-						
-			(
-				pow(measX - muX , 2.0)/(2*pow(std_landmark[0], 2.0)) + 
-				pow(measY - muY , 2.0)/(2*pow(std_landmark[1], 2.0))
-			) );
-			p.weight *= multiplier;
-			p.weight = 0.5;							
+				// numbering of rows in map starts with 1, hence association -1
+				double muX = map_landmarks.landmark_list[tr_observations[j].id-1].x_f;
+				double muY = map_landmarks.landmark_list[tr_observations[j].id-1].y_f;			
+				long double mul = 1 / (2.*M_PI*std_landmark[0]*M_PI*std_landmark[1])*
+				exp(-						
+				(
+					pow(measX - muX , 2.0)/(2*pow(std_landmark[0], 2.0))-
+					pow(measY - muY , 2.0)/(2*pow(std_landmark[1], 2.0))
+				) );
+			if (mul > 0){ p.weight *= mul; }				
+			}
 
 		}		
 
@@ -229,9 +236,6 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 		cout << "\t x: " << map_landmarks.landmark_list[obs.id-1].x_f;
 		cout << "\t y: " << map_landmarks.landmark_list[obs.id-1].y_f << endl;
 		cout << "-------------------------------------------" << endl;
-		
-
-
 	}
 	cout <<"n ass: " << tr_observations.size() << endl;
 
