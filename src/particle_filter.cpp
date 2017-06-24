@@ -179,7 +179,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 		associations.clear();
 		s_x.clear();
 		s_y.clear();
-		//p.weight = 1;
+		p.weight = 1;
 		
 
 		for (auto &t_obs : tr_observations)
