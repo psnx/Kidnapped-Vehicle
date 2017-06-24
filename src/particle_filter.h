@@ -122,7 +122,7 @@ public:
 	/*
 	*Extract relevant predictions from the map
 	*/
-	std::vector<LandmarkObs> predictObservations(Map m);
+	std::vector<LandmarkObs> predictObservations(Particle p, double range,  Map m);
 
 
 	
