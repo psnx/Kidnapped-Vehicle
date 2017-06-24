@@ -49,12 +49,15 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 
 	for (auto& p : particles)
 	{
+		/*
 		cout << "Particles prediction init \t";
 		cout <<"x: \t" << p.x;
 		cout <<"y: " << p.y;
 		cout <<"theta: " << p.theta;
-		cout <<"n ass: " << p.associations.size() << endl;
-
+		*/
+		for (auto &a : p.associations){
+			cout <<"ass: " << a << endl;
+		}
 	}	
 }
 
@@ -91,7 +94,7 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 		particles[i].y = N_y(gen);
 		particles[i].theta = N_theta(gen);
 
-		particles[i].associations.clear();		
+		//particles[i].associations.clear();		
 	}
 /*diag
 	for (auto& p : particles)
@@ -119,17 +122,18 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 	{
 		//LandmarkObs observed = observations[i];
 		//TODO: cut off too big differences
+		minDist = 100;
 		for (int j = 0; j < predicted.size(); j++)
 		{
-			minDist = 1000;			
+						
 			double d = dist(predicted[j].x, predicted[j].y, observations[i].x, observations[i].y);
 			if  (d < minDist)	
 			{
 				association = predicted[j].id;
-				minDist = d;
-			}
-		observations[i].id = association;
+				minDist = d;				
+			}				
 		}
+	observations[i].id = association;
 	}
 }
 
@@ -154,12 +158,16 @@ std::vector<LandmarkObs> ParticleFilter::predictObservations(Particle p, double 
 	LandmarkObs landmark;
 	std::vector<LandmarkObs> relevantLandmarks;	
 
-	for (auto &lm : m.landmark_list){		
-		
-		landmark.id = lm.id_i;
-		landmark.x = lm.x_f;
-		landmark.y = lm.y_f;		
-		relevantLandmarks.push_back(landmark);
+	for (auto &lm : m.landmark_list)
+	{
+		if (dist(p.x, p.y, lm.x_f, lm.y_f) <= range) 
+		{
+			landmark.id = lm.id_i;
+			landmark.x = lm.x_f;
+			landmark.y = lm.y_f;		
+			relevantLandmarks.push_back(landmark);			
+			cout << "nr landmarks: \t" << relevantLandmarks.size() << "\t ID: " << landmark.id << endl;
+		}		
 	}
 	return relevantLandmarks;
 }
@@ -210,17 +218,17 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 					pow(measX - muX , 2.0)/(2*pow(std_landmark[0], 2.0))+
 					pow(measY - muY , 2.0)/(2*pow(std_landmark[1], 2.0))
 				) );
-				p.weight *= mul; 	
-		
+				p.weight *= mul;
+			
+			weights.push_back(p.weight);	
+			/*
 			cout << "particle id: " << p.id;			
 			cout << "\t mul : " << mul;	
 			cout << "\t measX: " << measX;	
 			cout << "\t muX: " << muX << endl;
-
-			
-			p = SetAssociations(p, associations, s_x, s_y);
-
-		}		
+			*/		
+		}	
+		p = SetAssociations(p, associations, s_x, s_y);							
 
 	}	
 	/*diagnostic
